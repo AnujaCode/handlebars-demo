@@ -38,10 +38,21 @@ const seedDb = async () => {
 
 seedDb();
 
-//sauce route
-
-
 //sauces route
+app.get('/sauces', async (req, res)=>{
+    const sauceList = await Sauce.findAll()
+    //res.json({sauces})
+    res.render("sauces",{sauceList})//2 args: string name of template, data to put in
+})
+
+//one sauce route
+app.get('/sauces/:id', async (req, res) => {
+    const sauce = await Sauce.findByPk(req.params.id)
+    // res.json({ sauce })
+    res.render("sauce", { sauce });
+})
+
+
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`)
