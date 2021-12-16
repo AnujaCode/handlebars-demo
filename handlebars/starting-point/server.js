@@ -18,7 +18,21 @@ const port = 3000;
 
 app.use(express.static('public'));
 
-app.use(express.json());
+const handlebars = expressHandlebars({
+    handlebars : allowInsecurePrototypeAccess(Handlebars)
+})
+
+
+app.engine('handlebars', handlebars);
+app.set('view engine', 'handlebars')
+
+//serve static assets from public folder
+app.use(express.static('public')) //
+
+//body parser so req.body is not undefined
+app.use(require('body-parser').urlencoded());
+app.use(express.json())
+app.use(express.urlencoded({extended:false}))
 
 
 const restaurantChecks = [
@@ -27,9 +41,13 @@ const restaurantChecks = [
     check('name').isLength({ max: 50 })
 ]
 
+app.get("/", (req, res) => {
+    res.redirect ("/restaurants") 
+})
+
 app.get('/restaurants', async (req, res) => {
     const restaurants = await Restaurant.findAll();
-    res.json(restaurants);
+    res.render("restaurant",{restaurants});
 });
 
 app.get('/restaurants/:id', async (req, res) => {
@@ -38,7 +56,7 @@ app.get('/restaurants/:id', async (req, res) => {
             include: MenuItem
         }
     });
-    res.json(restaurant);
+    res.render("onerestaurant",{restaurant});
 });
 
 app.post('/restaurants', restaurantChecks, async (req, res) => {
@@ -51,13 +69,18 @@ app.post('/restaurants', restaurantChecks, async (req, res) => {
 });
 
 app.delete('/restaurants/:id', async (req, res) => {
-    await Restaurant.destroy({
+    const resDelete = await Restaurant.destroy({
         where: {
             id: req.params.id
         }
-    });
-    res.sendStatus(200);
+    });console.log(resDelete)
+    res.send(resDelete ? "Deleted Restaurant" : "Deleted Failed");
+    
 });
+  //  res.sendStatus(200);
+    
+
+
 
 app.put('/restaurants/:id', restaurantChecks, async (req, res) => {
     const errors = validationResult(req);
@@ -74,6 +97,34 @@ app.patch('/restaurants/:id', async (req, res) => {
     await restaurant.update(req.body);
     res.sendStatus(200);
 });
+
+app.get("/new-restaurant",(req,res) =>{
+    const restaurantAlert = ""
+    res.render("addrestaurantForm",{restaurantAlert})
+})
+
+app.post("/new-restaurant",async(req,res)=>{
+    //Add restaurant to db based on html form data
+    const newRestaurant = await Restaurant.create(req.body)
+//create a restaurantAlert to pass to the template
+let restaurantAlert = `${newRestaurant.name} added to your database`
+   const foundRestaurant = await Restaurant.findByPk(newRestaurant.id)
+   if(foundRestaurant){
+       res.render('addrestaurantForm',{restaurantAlert})
+   }else{
+       restaurantAlert = "Failed to add sauce"
+       res.render('addrestaurantForm',{restaurantAlert})
+   }
+    console.log(newRestaurant)
+})
+
+// app.delete('/restaurants/:id', async(req,res)=>{
+//     const deleteRestaurant = await Restaurant.destroy({
+//         where: {id:req.params.id}
+//     })
+//     const restaurants = await Restaurant.findAll();
+//     res.render("restaurant",{restaurants})
+// })
 
 app.listen(port, () => {
     console.log(`Server listening at http://localhost:${port}`);
